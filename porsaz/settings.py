@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'corsheaders',
     'jalali_date',
+    'account',
 ]
 
 CORS_ORIGIN_WHITELIST = (
