@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'jalali_date',
     'account',
+    'main',
 ]
 
 CORS_ORIGIN_WHITELIST = (
