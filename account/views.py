@@ -21,7 +21,7 @@ from . import models, serializers
 def get_sms_token():
     conn = http.client.HTTPSConnection("restfulsms.com")
 
-    payload = "{\r\n\t\"UserApiKey\":\"ce0d433857024c83db93f3b\",\r\n\t\"SecretKey\":\"1273551893Bb#\"\r\n}\r\n"
+    payload = "{\r\n\t\"UserApiKey\":\"a\",\r\n\t\"SecretKey\":\"#\"\r\n}\r\n"
 
     headers = {
         'content-type': "application/json",
