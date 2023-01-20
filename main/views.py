@@ -557,6 +557,7 @@ class QuestionChoice(generics.RetrieveUpdateAPIView):
         return Response({'message': message}, status=status.HTTP_200_OK)
 
 
+class QuestionImages(generics.RetrieveUpdateAPIView):
     authentication_classes = (TokenAuthentication,)
 
     def post(self, *args, **kwargs):
