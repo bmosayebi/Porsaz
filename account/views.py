@@ -234,3 +234,46 @@ class Register(APIView):
         else:
             message = "کاربری با این شماره همراه یافت نشد"
             return Response({'message': message}, status=400)
+
+
+class UpdateName(generics.RetrieveUpdateAPIView):
+    authentication_classes = (TokenAuthentication,)
+    
+    def get(self, *args, **kwargs):
+        if not self.request.user.is_authenticated:
+            message = "توکن کاربر معتبر نیست"
+            return Response({'message': message}, status=400)
+        
+        user = serializers.UserReadSerializer(self.request.user).data
+        message = "اطلاعات کابر به این صورت است."
+        return Response({'message': message,'user': user}, status=200)
+        
+        
+        
+    def post(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                first_name = self.request.query_params['first_name']
+                last_name = self.request.query_params['last_name']
+            elif self.request.data:
+                first_name = self.request.data['first_name']
+                last_name = self.request.data['last_name']
+            else:
+                message = "پارامتری وجود ندارد"
+                return Response({'message': message}, status=400)
+        except:
+            message = "پارامترها ناقص است"
+            return Response({'message': message}, status=400)
+        
+        if not self.request.user.is_authenticated:
+            message = "توکن کاربر معتبر نیست"
+            return Response({'message': message}, status=400)
+            
+        user = self.request.user
+        user.first_name = first_name
+        user.last_name = last_name
+        user.save()
+        
+        user = serializers.UserReadSerializer(user).data
+        message = "اطلاعات کاربر با موفقیت ویرایش شد"
+        return Response({'message': message, 'user': user}, status=200)
