@@ -375,3 +375,331 @@ class Question(generics.RetrieveUpdateAPIView):
         message = "سوال موردنظر با موفقیت حذف شد."
         return Response({'message': message}, status=status.HTTP_200_OK)
 
+
+class QuestionChoices(generics.RetrieveUpdateAPIView):
+    authentication_classes = (TokenAuthentication,)
+
+    def post(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                question_id = self.request.query_params['question_id']
+                number = self.request.query_params['number']
+                text = self.request.query_params['text']
+            elif self.request.data:
+                question_id = self.request.data['question_id']
+                number = self.request.data['number']
+                text = self.request.data['text']
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        question = models.Question.objects.filter(id=question_id)
+        if not question:
+            message = "سوال موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question = question.first()
+
+        if self.request.user != question.survey.user:
+            message = "شما امکان اضافه کردن گزینه به این سوال را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not question.question_type in ['1', '5']:
+            message = "این سوال گزینه‌ای نیست."
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        for qc in question.multiple_choices.all():
+            if str(qc.number) == str(number):
+                message = "شماره گزینه تکراری است."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        
+        question_choice = models.QuestionMultipleChoice.objects.create(question=question, number=number, text=text)
+        question_choice.save()
+
+        message = f"گزینه شماره {question_choice.number} با موفقیت اضافه شد."
+        data = {
+            'question_choice': serializers.get_question_choice_dictionary(question_choice),
+        }
+        return Response({"message": message, 'data': data}, status=status.HTTP_201_CREATED)
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                question_id = self.request.query_params['question_id']
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        question = models.Question.objects.filter(id=question_id)
+        if not question:
+            message = "سوال موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question = question.first()
+
+        question_choices = []
+        for question_choice in question.multiple_choices.all():
+            question_choices.append(serializers.get_question_choice_dictionary(question_choice))
+        
+        data ={
+            'question_id': question.id,
+            'question_choices': question_choices
+        }
+        message = f'{len(question_choices)} گزینه یافت شد.'
+        return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
+
+class QuestionChoice(generics.RetrieveUpdateAPIView):
+    authentication_classes = (TokenAuthentication,)
+
+    def get(self, *args, **kwargs):
+        try:
+            question_choice_id = kwargs['question_choice_id']
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        question_choice = models.QuestionMultipleChoice.objects.filter(id=question_choice_id)
+        if not question_choice:
+            message = "گزینه موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question_choice = question_choice.first()
+
+        data = {
+            'question_choice': serializers.get_question_choice_dictionary(question_choice),
+        }
+        message = "گزینه یافت شد."
+        return Response({'message': message, 'data': data}, status=status.HTTP_200_OK)
+
+    
+    def put(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                number = self.request.query_params.get('number')
+                text = self.request.query_params.get('text')
+            elif self.request.data:
+                number = self.request.data.get('number')
+                text = self.request.data.get('text')
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+
+            question_choice_id = kwargs['question_choice_id']
+            
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        question_choice = models.QuestionMultipleChoice.objects.filter(id=question_choice_id)
+        if not question_choice:
+            message = "گزینه موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question_choice = question_choice.first()
+
+        survey = question_choice.question.survey
+        if self.request.user != survey.user:
+            message = "شما امکان ویرایش این گزینه را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+        
+        updates = ""
+        if number:
+            question_choice.number = number
+            updates += "شماره گزینه "
+        if text:
+            question_choice.text = text
+            updates += "متن گزینه "
+
+        if updates:
+            message = f"مقادیر ({updates}) با موفقیت ویرایش شد."
+            question_choice.save()
+        else:
+            message = "مقداری ویرایش نشد."
+        
+        return Response({'message': message}, status=status.HTTP_200_OK)
+        
+    def delete(self, request, *args, **kwargs):
+        try:
+            question_choice_id = kwargs['question_choice_id']
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        question_choice = models.QuestionMultipleChoice.objects.filter(id=question_choice_id)
+        if not question_choice:
+            message = "گزینه موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question_choice = question_choice.first()
+
+        if self.request.user != question_choice.question.survey.user:
+            message = "شما امکان ویرایش این گزینه را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+        
+        question_choice.delete()
+
+        message = "گزینه موردنظر با موفقیت حذف شد."
+        return Response({'message': message}, status=status.HTTP_200_OK)
+
+
+    authentication_classes = (TokenAuthentication,)
+
+    def post(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                question_id = self.request.query_params['question_id']
+            elif self.request.data:
+                question_id = self.request.data['question_id']
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+            file = self.request.data['file']
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        question = models.Question.objects.filter(id=question_id)
+        if not question:
+            message = "سوال موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question = question.first()
+
+        if self.request.user != question.survey.user:
+            message = "شما امکان اضافه کردن تصویر به این سوال را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not file:
+            message = "تصویری انتخاب نشده است."
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if question.image:
+            message = "این سوال تصویر دارد لطفا سوال را ویرایش کنید."
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        
+        question.image = file
+        question.save()
+
+        message = " تصویر با موفقیت بارگزاری شد."
+        return Response({"message": message,}, status=status.HTTP_200_OK)
+    
+    def get(self, request, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                question_id = self.request.query_params['question_id']
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        question = models.Question.objects.filter(id=question_id)
+        if not question:
+            message = "سوال موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question = question.first()
+        
+        if not question.image:
+            message = "سوال موردنظر تصویر ندارد ."
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        data ={
+            'image': question.image.url
+        }
+        message = 'تصویر سوال یافت شد.'
+        return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
+
+    def put(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                question_id = self.request.query_params['question_id']
+            elif self.request.data:
+                question_id = self.request.data['question_id']
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+            file = self.request.data['file']
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        question = models.Question.objects.filter(id=question_id)
+        if not question:
+            message = "سوال موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question = question.first()
+
+        if self.request.user != question.survey.user:
+            message = "شما امکان اضافه کردن تصویر به این سوال را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+        
+        if not file:
+            message = "تصویری انتخاب نشده است."
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        question.image = file
+        question.save()
+
+        message = " تصویر با موفقیت بارگزاری شد."
+        return Response({"message": message,}, status=status.HTTP_200_OK)
+    
+    def delete(self, request, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                question_id = self.request.query_params['question_id']
+            elif self.request.data:
+                question_id = self.request.data['question_id']
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        question = models.Question.objects.filter(id=question_id)
+        if not question:
+            message = "سوال موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        question = question.first()
+
+        if self.request.user != question.survey.user:
+            message = "شما امکان اضافه کردن تصویر به این سوال را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+
+        if not question.image:
+            message = "این سوال تصویری ندارد."
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+
+        question.image = None
+        question.save()
+
+        message = 'تصویر سوال با موفقیت حذف شد.'
+        return Response({"message": message}, status=status.HTTP_200_OK)
