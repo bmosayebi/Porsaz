@@ -143,3 +143,94 @@ class SendSMS(APIView):
             message = "کد احراز هویت با موفقیت ارسال شد."
             return Response({'message': message, 'sms_sent': True, 'regsitered': False}, status=200)
 
+
+class ValidateCode(APIView):
+    def post(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                username = self.request.query_params['username']
+                rcode = self.request.query_params['code']
+            elif self.request.data:
+                username = self.request.data['username']
+                rcode = self.request.data['code']
+            else:
+                message = "پارامتری وجود ندارد"
+                return Response({'message': message}, status=400)
+        except:
+            message = "پارامترها ناقص است"
+            return Response({'message': message}, status=400)
+
+        if len(username) != 11 or username[:2] != "09" or not username.isnumeric():
+            message = "شماره همراه وارد شده معتبر نیست "
+            return Response({'message': message}, status=400)
+
+        user = models.UserProfile.objects.filter(username=username)
+
+        if user.count():
+            user = user[0]
+            if int(rcode) == user.r_code:
+                user.phone_valid = True
+                if user.register_complete:
+                    user.save()
+                    token, created = Token.objects.get_or_create(user=user)
+                    user = serializers.UserReadSerializer(user).data
+                    message = "لاگین با موفقیت انجام شد."
+                    return Response({'message': message, 'code_valid': True, 'registered': True, 'token': token.key, 'user': user}, status=200)
+                
+                security_code = generate_security_code(30)
+                user.security_code = security_code
+                user.save()
+                message = "کد احراز هویت صحیح است."
+                return Response({'message': message, 'code_valid': True, 'registered': False, 'security_code': security_code}, status=200)
+            else:
+                message = "کد احراز هویت صحیح نمی‌باشد."
+                return Response({'message': message, 'code_valid': False}, status=200)
+        else:
+            message = "کاربری با این شماره همراه یافت نشد"
+            return Response({'message': message}, status=400)
+
+class Register(APIView):
+    def post(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                username = self.request.query_params['username']
+                security_code = self.request.query_params['security_code']
+                first_name = self.request.query_params['first_name']
+                last_name = self.request.query_params['last_name']
+                goal = self.request.query_params.get('goal')
+            elif self.request.data:
+                username = self.request.data['username']
+                security_code = self.request.data['security_code']
+                first_name = self.request.data['first_name']
+                last_name = self.request.data['last_name']
+                goal = self.request.data.get('goal')
+            else:
+                message = "پارامتری وجود ندارد"
+                return Response({'message': message}, status=400)
+        except:
+            message = "پارامترها ناقص است"
+            return Response({'message': message}, status=400)
+
+        user = models.UserProfile.objects.filter(username = username)
+
+        if user.count() and user[0].phone_valid:
+            user = user[0]
+            if user.security_code == security_code:
+                user.first_name = first_name
+                user.last_name = last_name
+                
+                if goal and goal in ['1', '2', 1, 2]:
+                    user.goal = str(goal)
+                    
+                user.register_complete = True
+                user.save()
+                token, created = Token.objects.get_or_create(user=user)
+                user = serializers.UserReadSerializer(user).data
+                message = "کاربر با موفقیت ثبت‌نام شد."
+                return Response({'message': message,'registered': True, 'token': token.key, 'user': user}, status=200)
+            else:
+                message = "کد امنیتی صحیح نمی‌باشد"
+                return Response({'message': message}, status=400)
+        else:
+            message = "کاربری با این شماره همراه یافت نشد"
+            return Response({'message': message}, status=400)
