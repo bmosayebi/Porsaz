@@ -40,7 +40,7 @@ def get_question_choice_dictionary(question_choice):
     return data
 
 
-def get_survey_answer(survey):
+def get_survey_answer_dictionary(survey):
     data = {
         'survey_answer_id': survey.id,
         'survey_id': survey.survey.id,

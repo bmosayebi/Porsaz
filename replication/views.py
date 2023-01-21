@@ -11,7 +11,7 @@ from main import models as main
 from main import serializers
 
 
-class SurveyAnswer(generics.RetrieveUpdateAPIView):
+class SurveyAnswers(generics.RetrieveUpdateAPIView):
     authentication_classes = (TokenAuthentication,)
 
     def post(self, *args, **kwargs):
@@ -57,7 +57,7 @@ class SurveyAnswer(generics.RetrieveUpdateAPIView):
 
         survey_list = []
         for survey_answer in survey_answers:
-            survey_list.append(serializers.get_survey_answer())
+            survey_list.append(serializers.get_survey_answer_dictionary())
 
         data ={
             'survey_answers': survey_list,
@@ -67,3 +67,24 @@ class SurveyAnswer(generics.RetrieveUpdateAPIView):
 
         return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
 
+class SurveyAnswer(generics.RetrieveUpdateAPIView):
+    authentication_classes = (TokenAuthentication,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            survey_answer_id = kwargs['survey_answer_id']
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        survey_answer = main.SurveyAnswer.objects.filter(id=survey_answer_id)
+        if not survey_answer:
+            message = "پرسش‌نامه موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        survey_answer = survey_answer.first()
+
+        data ={
+            'survey_answer': serializers.get_survey_answer_dictionary(survey_answer),
+        }
+        message = "پاسخ پرسش‌نامه یافت شد."
+        return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
