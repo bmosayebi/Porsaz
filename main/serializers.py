@@ -38,3 +38,12 @@ def get_question_choice_dictionary(question_choice):
         'text': question_choice.text
     }
     return data
+
+
+def get_survey_answer(survey):
+    data = {
+        'survey_answer_id': survey.id,
+        'survey_id': survey.survey.id,
+        'created': survey.created,
+    }
+    return data

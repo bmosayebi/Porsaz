@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
 from django.contrib.auth.models import BaseUserManager
+from django.apps import apps
 
 # from main import models as main
 
@@ -57,6 +58,9 @@ class UserProfile(AbstractBaseUser, PermissionsMixin):
          verbose_name = 'کاربر'
          verbose_name_plural = 'کاربر ها'
          ordering = ('-date_joined',)
+
+    def get_survey_answers(self):
+        return apps.get_model('main.SurveyAnswer').objects.filter(user=self)
 
 
     def get_short_name(self):
