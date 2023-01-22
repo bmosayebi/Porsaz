@@ -10,6 +10,7 @@ from rest_framework import status
 from main import models as main
 from main import serializers
 
+import json
 
 class SurveyAnswers(generics.RetrieveUpdateAPIView):
     authentication_classes = (TokenAuthentication,)
@@ -42,10 +43,11 @@ class SurveyAnswers(generics.RetrieveUpdateAPIView):
 
         survey_answer = main.SurveyAnswer.objects.create(user=self.request.user, survey=survey)
         question_answers = []
-        try:
+        
+        if True:
             for d in data:
-                question_id = data['question_id']
-                answer = data['answer']
+                question_id = d['question_id']
+                answer = d['answer']
 
                 question = main.Question.objects.filter(id=question_id)
                 if not question:
@@ -119,8 +121,7 @@ class SurveyAnswers(generics.RetrieveUpdateAPIView):
                     message = "نوع سوال نامعتبر است."
                     return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
 
-        except Exception as e:
-            message = repr(e)
+        else:
             return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -150,7 +151,7 @@ class SurveyAnswers(generics.RetrieveUpdateAPIView):
 
         survey_list = []
         for survey_answer in survey_answers:
-            survey_list.append(serializers.get_survey_answer_dictionary())
+            survey_list.append(serializers.get_survey_answer_dictionary(survey_answer))
 
         data ={
             'survey_answers': survey_list,
@@ -159,151 +160,3 @@ class SurveyAnswers(generics.RetrieveUpdateAPIView):
         message = f'{surveys_count} پاسخ پرسش‌نامه یافت شد'
 
         return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
-
-class SurveyAnswer(generics.RetrieveUpdateAPIView):
-    authentication_classes = (TokenAuthentication,)
-
-    def get(self, request, *args, **kwargs):
-        try:
-            survey_answer_id = kwargs['survey_answer_id']
-        except Exception as e:
-            message = repr(e)
-            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-        
-        if not self.request.user.is_authenticated:
-            message = "لطفا ابتدا وارد شوید."
-            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
-
-        survey_answer = main.SurveyAnswer.objects.filter(id=survey_answer_id)
-        if not survey_answer:
-            message = "پرسش‌نامه موردنظر یافت نشد."
-            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
-        survey_answer = survey_answer.first()
-
-        if survey_answer.user != self.request.user:
-            message = "این پاسخ پرسش‌نامه متعلق به شما نمی‌باشد."
-            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
-
-        data ={
-            'survey_answer': serializers.get_survey_answer_dictionary(survey_answer),
-        }
-        message = "پاسخ پرسش‌نامه یافت شد."
-        return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
-
-
-
-class QuestionAnswer(generics.RetrieveUpdateAPIView):
-    authentication_classes = (TokenAuthentication,)
-
-    def post(self, request, *args, **kwargs):
-        try:
-            if self.request.query_params:
-                question_id = self.request.query_params['question_id']
-                answer = self.request.query_params['answer']
-                survey_answer_id = self.request.query_params['survey_answer_id']
-            elif self.request.data:
-                question_id = self.request.data['question_id']
-                answer = self.request.query_params['answer']
-                survey_answer_id = self.request.query_params['survey_answer_id']
-            else:
-                message = "پارامتری وجود ندارد."
-                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            message = repr(e)
-            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-        
-
-        if not self.request.user.is_authenticated:
-            message = "لطفا ابتدا وارد شوید."
-            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
-
-        survey_answer = main.SurveyAnswer.objects.filter(id=survey_answer_id)
-        if not survey_answer:
-            message = "پرسش‌نامه موردنظر یافت نشد."
-            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
-        survey_answer = survey_answer.first()
-
-        if survey_answer.user != self.request.user:
-            message = "این پاسخ پرسش‌نامه متعلق به شما نمی‌باشد."
-            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
-
-        question = main.Question.objects.filter(id=question_id)
-        if not question:
-            message = "سوال موردنظر یافت نشد."
-            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
-        question = question.first()
-
-        try:
-            if question.question_type == '1':
-                choice = main.QuestionMultipleChoice.objects.filter(id=answer)
-                if not choice:
-                    message="گزینه مورد نظر یافت نشد."
-                    return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
-                choice = choice.first()
-
-                if choice.question != question:
-                    message="گزینه مورد نظر مربوط به این سوال نیست."
-                    return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-                question_answer = main.QuestionMultipleChoiceAnswer(question=question, survey=survey_answer, answer=choice)
-                question_answer.save()
-
-            elif question.question_type == '2':
-                if len(answer) > 250:
-                    message="حداکثر طول پاسخ ۲۵۰ کاراکتر است."
-                    return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-                question_answer = main.QuestionShortAnswer(question=question, survey=survey_answer, answer=answer)
-                question_answer.save()
-
-            elif question.question_type == '3':
-                question_answer = main.QuestionLongAnswer(question=question, survey=survey_answer, answer=answer)
-                question_answer.save()
-
-            elif question.question_type == '4':
-                if not answer.isnumeric():
-                    message="پاسخ این سوال باید کاملا عددی باشد."
-                    return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-                question_answer = main.QuestionNumberAnswer(question=question, survey=survey_answer, answer=int(answer))
-                question_answer.save()
-
-            elif question.question_type == '5':
-                if not answer.isnumeric():
-                    message="پاسخ این سوال باید کاملا عددی باشد."
-                    return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-                answer = int(answer)
-                if answer > question.star_count:
-                    message = f"تعداد ستاره‌های انتخابی باید کمتر از {question.star_count} باشد."
-                    return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-                question_answer = main.QuestionStarAnswer(question=question, survey=survey_answer, answer=answer)
-                question_answer.save()
-            
-            elif question.question_type == '6':
-                for ans in answer:
-                    choice = main.QuestionMultipleChoice.objects.filter(id=answer)
-                    if not choice:
-                        message="گزینه مورد نظر یافت نشد."
-                        return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
-                    choice = choice.first()
-
-                    if choice.question != question:
-                        message="گزینه مورد نظر مربوط به این سوال نیست."
-                        return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-                    question_answer = main.QuestionMultipleChoiceAnswer(question=question, survey=survey_answer, answer=choice)
-                    question_answer.save()
-
-            else:
-                message = "نوع سوال نامعتبر است."
-                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-        except Exception as e:
-            message = repr(e)
-            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-
-        message = "پاسخ پرسش‌نامه با موفقیت ثبت شد."
-        return Response({"message": message}, status=status.HTTP_200_OK)
-

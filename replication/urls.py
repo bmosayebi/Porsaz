@@ -6,8 +6,6 @@ from . import views
 app_name = 'replication'
 
 urlpatterns = [
-    path('survey-answers/', views.SurveyAnswers, name="survey_answers" ),
-    path('survey-answers/<int:survey_answer_id>/', views.SurveyAnswer, name="survey_answer" ),
+    path('survey-answers/', views.SurveyAnswers.as_view(), name="survey_answers" ),
 
-    path('question-answers/', views.QuestionAnswer, name="question_answers" ),
 ]
