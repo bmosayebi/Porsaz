@@ -48,11 +48,15 @@ class QuestionMultipleChoiceAnswerInline(admin.TabularInline):
     classes = ['collapse', ]
 
 class SurveyAnswerAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
-    list_display = ['title', 'number', 'survey', 'question_type']
-    list_filter = ['question_type']
-    search_fields = ['title', 'survey__name']
+    list_display = ['survey', 'user', 'get_created']
 
     inlines = [QuestionMultipleChoiceAnswerInline, ]
+
+    def get_created(self, obj):
+        return datetime2jalali(obj.created).strftime('%y/%m/%d _ %H:%M:%S')
+	
+    get_created.short_description = 'زمان ایجاد'
+    get_created.admin_order_field = 'created'
 
 
 admin.site.register(models.Survey, SurveyAdmin)
