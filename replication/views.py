@@ -111,13 +111,14 @@ class QuestionAnswer(generics.RetrieveUpdateAPIView):
             if self.request.query_params:
                 question_id = self.request.query_params['question_id']
                 answer = self.request.query_params['answer']
+                survey_answer_id = self.request.query_params['survey_answer_id']
             elif self.request.data:
                 question_id = self.request.data['question_id']
                 answer = self.request.query_params['answer']
+                survey_answer_id = self.request.query_params['survey_answer_id']
             else:
                 message = "پارامتری وجود ندارد."
                 return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
-            survey_answer_id = kwargs['survey_answer_id']
         except Exception as e:
             message = repr(e)
             return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
@@ -214,9 +215,6 @@ class QuestionAnswer(generics.RetrieveUpdateAPIView):
             message = repr(e)
             return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
 
-        data ={
-            'survey_answer': serializers.get_survey_answer_dictionary(survey_answer),
-        }
         message = "پاسخ پرسش‌نامه با موفقیت ثبت شد."
-        return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
+        return Response({"message": message}, status=status.HTTP_200_OK)
 
