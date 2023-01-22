@@ -42,8 +42,22 @@ class QuestionMultipleChoiceAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     search_fields = ['text']
 
 
+class QuestionMultipleChoiceAnswerInline(admin.TabularInline):
+    model = models.QuestionMultipleChoiceAnswer
+    extra = 0
+    classes = ['collapse', ]
+
+class SurveyAnswerAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
+    list_display = ['title', 'number', 'survey', 'question_type']
+    list_filter = ['question_type']
+    search_fields = ['title', 'survey__name']
+
+    inlines = [QuestionMultipleChoiceAnswerInline, ]
+
+
 admin.site.register(models.Survey, SurveyAdmin)
 admin.site.register(models.Question, QuestionAdmin)
 admin.site.register(models.QuestionMultipleChoice, QuestionMultipleChoiceAdmin)
+admin.site.register(models.SurveyAnswer, SurveyAnswerAdmin)
 
 
