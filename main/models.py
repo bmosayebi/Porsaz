@@ -39,6 +39,28 @@ class Question(models.Model):
     
     def __str__(self):
         return str(self.id)
+    
+    def get_report(self, survey_answer):
+        q = {
+            'question_type': self.question_type,
+            'number': self.number,
+            'title': self.title,
+            'subtitle': self.subtitle,
+            'image': self.image.url,
+            'star_count': self.star_count
+        }
+
+        a = {
+            'text': ''
+        }
+
+        if self.question_type == '1':
+            ans = self.multiple_choices.all()
+            if ans:
+                a['text'] = ans[0].answer.text
+        
+        return {'question': q, 'answer': a}
+
 
     class Meta:
         verbose_name = "سوال"

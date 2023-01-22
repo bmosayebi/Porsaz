@@ -77,3 +77,45 @@ class MySurvey(generics.RetrieveUpdateAPIView):
         }
         message = "پرسش‌نامه یافت شد."
         return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
+
+
+class SurveyAnswer(generics.RetrieveUpdateAPIView):
+    authentication_classes = (TokenAuthentication,)
+
+    def get(self, request, *args, **kwargs):
+        try:
+            survey_answer_id = kwargs['survey_answer_id']
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        survey_answer = main.SurveyAnswer.objects.filter(id=survey_answer_id)
+        if not survey_answer:
+            message = "پاسخ پرسش‌نامه موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        survey_answer = survey_answer.first()
+        survey = survey_answer.survey
+        
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        if self.request.user != survey.user:
+            message = "شما امکان مشاهده این پاسخ را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+
+        questions = survey.questions.all()
+        question_list = []
+
+        for q in questions:
+            question_list.append(q.get_report(survey_answer))
+
+
+        count = len(questions)
+
+        data ={
+            'questions': questions,
+            'count': count
+        }
+        message = "پاسخ‌ها یافت شد."
+        return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)
