@@ -60,7 +60,13 @@ class Surveys(generics.RetrieveUpdateAPIView):
         survey_list = []
 
         for survey in surveys:
-            survey_list.append(serializers.get_survey_dictionary(survey))
+            if survey.is_published:
+                survey_list.append(serializers.get_survey_dictionary(survey))
+            elif self.request.user.is_authenticated and self.request.user == survey.user:
+                d = serializers.get_survey_dictionary(survey)
+                d['is_published'] = survey.is_published
+                survey_list.append(d)
+
         data ={
             'surveys': survey_list,
             'count': surveys_count
@@ -85,8 +91,12 @@ class Survey(generics.RetrieveUpdateAPIView):
             return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
         survey = survey.first()
 
+        d = serializers.get_survey_dictionary(survey)
+        if self.request.user.is_authenticated and self.request.user == survey.user:  
+            d['is_published'] = survey.is_published
+
         data ={
-            'survey': serializers.get_survey_dictionary(survey),
+            'survey': d,
         }
         message = f'پرسش‌نامه {survey.name} یافت شد.'
         return Response({"message": message, 'data': data}, status=status.HTTP_200_OK)

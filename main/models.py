@@ -9,7 +9,7 @@ class Survey(models.Model):
     user = models.ForeignKey(account.UserProfile, on_delete=models.CASCADE, verbose_name="کاربر سازنده")
     name = models.CharField(max_length=255, verbose_name="نام")
     text = models.TextField(verbose_name="توضیحات")
-
+    is_published = models.BooleanField(default=False, verbose_name="منتشر شده")
 
     def __str__(self):
         return str(self.id)
