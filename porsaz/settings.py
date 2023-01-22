@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'jalali_date',
     'account',
     'replication',
+    'report',
     'main',
 ]
 
