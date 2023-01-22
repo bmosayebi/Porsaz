@@ -10,6 +10,49 @@ from rest_framework import status
 from . import models, serializers
 
 
+class SurveyPublish(generics.RetrieveUpdateAPIView):
+    authentication_classes = (TokenAuthentication,)
+
+    def post(self, *args, **kwargs):
+        try:
+            if self.request.query_params:
+                is_published = self.request.query_params.get('is_published')
+            elif self.request.data:
+                is_published = self.request.data.get('is_published')
+            else:
+                message = "پارامتری وجود ندارد."
+                return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+            survey_id = kwargs['survey_id']
+
+            if is_published in ['false', 'False', '0']:
+                is_published = False
+            else:
+                is_published = True
+        except Exception as e:
+            message = repr(e)
+            return Response({'message': message}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if not self.request.user.is_authenticated:
+            message = "لطفا ابتدا وارد شوید."
+            return Response({'message': message}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        survey = models.Survey.objects.filter(id=survey_id)
+        if not survey:
+            message = "پرسش‌نامه موردنظر یافت نشد."
+            return Response({'message': message}, status=status.HTTP_404_NOT_FOUND)
+        survey = survey.first()
+
+        if self.request.user != survey.user:
+            message = "شما امکان ویرایش این پرسش‌نامه را ندارید."
+            return Response({'message': message}, status=status.HTTP_403_FORBIDDEN)
+        
+        survey.is_published = is_published
+        survey.save()
+
+        message = "پرسش‌نامه با موفقیت ویرایش شد."
+        return Response({'message': message}, status=status.HTTP_200_OK)
+
+
 class Surveys(generics.RetrieveUpdateAPIView):
     authentication_classes = (TokenAuthentication,)
 
